@@ -1,0 +1,76 @@
+services:
+  mysql:
+    container_name: eq-mysql
+    image: mysql:8.0
+    labels:
+      - 'docker.group=Earthquakes'
+    environment:
+      - MYSQL_ROOT_PASSWORD=$DOCKER_MYSQLDB_ROOT_PASSWORD
+      - MYSQL_DATABASE=$DOCKER_MYSQLDB_DATABASE
+    ports:
+      - $DOCKER_MYSQLDB_PORT_LOCAL:$DOCKER_MYSQLDB_PORT_CONTAINER
+    networks:
+      - eq-network
+    volumes:
+      - db:/var/lib/mysql
+    restart: unless-stopped
+
+  backend:
+    container_name: eq-backend
+    image: eq-backend:1.0.0
+    build:
+      context: ./backend
+      target: development
+      dockerfile: ./Dockerfile
+    command: npm run dev
+    labels:
+      - 'docker.group=Earthquakes'
+    environment:
+      - PORT=$PORT
+      - DATABASE_URL=$DATABASE_URL
+    ports:
+      - $PORT:4000
+    networks:
+      - eq-network
+    volumes:
+      - ./backend/:/usr/src/app
+      - backend:/usr/src/app/node_modules
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
+  frontend:
+    container_name: eq-frontend
+    image: eq-frontend:1.0.0
+    build:
+      context: ./frontend
+      target: development
+      dockerfile: ./Dockerfile
+    command: npm run dev
+    labels:
+      - 'docker.group=Earthquakes'
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL
+    ports:
+      - $FEPORT:3000
+    networks:
+      - eq-network
+    volumes:
+      - ./frontend/:/usr/src/app
+      - frontend:/usr/src/app/node_modules
+    depends_on:
+      - mysql
+      - backend
+    restart: unless-stopped
+
+networks:
+  eq-network:
+    driver: bridge
+
+volumes:
+  db:
+    driver: local
+  backend:
+    driver: local
+  frontend:
+    driver: local

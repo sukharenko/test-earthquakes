@@ -1,0 +1,26 @@
+FROM node:20.11.0-alpine AS development
+
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /usr/src/app
+
+COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+RUN \
+    if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
+    elif [ -f package-lock.json ]; then npm ci; \
+    elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm i --frozen-lockfile; \
+    else echo "Lockfile not found." && exit 1; \
+    fi
+
+RUN npm install -g npm
+RUN npm install -g ts-node
+RUN npm install -g prisma
+RUN npm install glob rimraf
+
+RUN npm install
+
+COPY . .
+
+RUN npx prisma generate
+
+EXPOSE 4000
